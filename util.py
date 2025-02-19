@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import logging
 logger = logging.getLogger(__name__)
 
+POSDEF = True
 
 # Just a basic sparse symmetric matrix
 # for all functions to use.
@@ -17,6 +18,9 @@ def make_symmetric(m, upper_bands = [1,16,128], seed = 42):
         assert band > 0
         assert band < m
     A = sp.diags([rng.uniform(-1,1,size=m) for _ in upper_bands],upper_bands,shape=(m,m))
+    if POSDEF:
+        B = A + A.T
+        return B.T @ B
     return A + A.T
 
 class CounterOperator(spla.LinearOperator):
@@ -111,15 +115,50 @@ def batched_minres(A, B, **kwargs):
     return X, info
 
 
+def block_minres_indiv(A, B, **kwargs):
+    """
+    Solve A X = B by calling MINRES independently on each right-hand side.
+    All extra keyword arguments are forwarded to scipy.sparse.linalg.minres.
+
+    Parameters
+    ----------
+    A : {ndarray, sparse matrix, or callable}
+        A symmetric matrix or a function that applies A.
+    B : ndarray
+        Right-hand side(s), shape (m, nrhs).
+    **kwargs : dict
+        Additional keyword arguments to pass to minres (e.g. tol, maxiter, etc.).
+
+    Returns
+    -------
+    X : ndarray
+        Approximate solution array of shape (m, nrhs).
+    infos : list
+        List of convergence information for each column.
+    """
+    m, nrhs = B.shape
+    X = np.zeros((m, nrhs))
+    infos = []
+    
+    for i in range(nrhs):
+        x, info = spla.minres(A, B[:, i], **kwargs)
+        X[:, i] = x
+        infos.append(info)
+        
+    return X, infos
+
+
 # Just do approximate inverse iteration. This uses
 # batched minres with fixed number of iterations as 
 # a polynomial acceleration technique. 
-def ipower(A,k,maxiter,inner_maxiter,rng = np.random.default_rng(42)):
+def ipower(A,k,maxiter,inner_maxiter,rng = np.random.default_rng(42), tol=1e-3, callback = None):
     m,n=A.shape
     assert m==n
     V = rng.uniform(-1,1,size=(m,k))
     V,_ = la.qr(V,mode="economic")
     for it in range(maxiter):
-        V,_ = batched_minres(A, V, maxiter=inner_maxiter)
+        V,_ = block_minres_indiv(A, V, maxiter=inner_maxiter, tol=tol)
         V,_ = la.qr(V,mode="economic")
+        if callback is not None:
+            callback(V)
     return V

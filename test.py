@@ -29,6 +29,19 @@ class TestArnoldi(unittest.TestCase):
         B = rng.uniform(-1,1,size=(m,k))
         X,info = util.batched_minres(A,B,tol=1e-13)
         self.assertTrue(np.linalg.norm(B - A@X) < 1e-6 )
+    def test_block_minres_indef(self):
+        import scipy.sparse as sp
+        seed=23987432
+        rng=np.random.default_rng(seed)
+        m=1024
+        k=7
+        bands = [-32,-1,0,1,32]
+        A = util.make_symmetric(m)
+        B = rng.uniform(-1,1,size=(m,k))
+        X,info = util.block_minres_indiv(A,B,tol=1e-13)
+        self.assertTrue(np.linalg.norm(B - A@X) < 1e-6 )
+
+
 
 
 
