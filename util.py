@@ -156,9 +156,17 @@ def ipower(A,k,maxiter,inner_maxiter,rng = np.random.default_rng(42), tol=1e-3, 
     assert m==n
     V = rng.uniform(-1,1,size=(m,k))
     V,_ = la.qr(V,mode="economic")
+    errs = np.ones(V.shape[1])
     for it in range(maxiter):
-        V,_ = block_minres_indiv(A, V, maxiter=inner_maxiter, tol=tol)
+        k = np.argmax(errs < tol)
+        V[:,k:],_ = block_minres_indiv(A, V[:,k:], maxiter=inner_maxiter, tol=tol)
+
         V,_ = la.qr(V,mode="economic")
+        AV = A @ V
+        errs = np.array([np.linalg.norm(V[:,j] - np.dot(V[:,j],AV[:,j])*AV[:,j]) for j in range(V.shape[1])])
+        js = np.argsort(errs)
+        errs = errs[js]
+        V = V[:,js]
         if callback is not None:
             callback(V)
     return V
