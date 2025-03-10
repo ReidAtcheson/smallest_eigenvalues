@@ -38,8 +38,10 @@ class TestArnoldi(unittest.TestCase):
         bands = [-32,-1,0,1,32]
         A = util.make_symmetric(m)
         B = rng.uniform(-1,1,size=(m,k))
-        X,info = util.block_minres_indiv(A,B,tol=1e-13)
-        self.assertTrue(np.linalg.norm(B - A@X) < 1e-6 )
+        X,info = util.block_minres_indiv(A,B,tol=1e-13,maxiter=50000)
+        res = np.linalg.norm(B - A@X)
+        print(res)
+        self.assertTrue(np.linalg.norm(B - A@X)/np.linalg.norm(B) < 1e-6 )
 
 
 

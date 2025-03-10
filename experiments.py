@@ -57,6 +57,17 @@ def warmup_inverse_lanczos(m,k,tol=1e-5):
     w,V = spla.eigsh(A.counterA,k,tol=tol,sigma=0.0,OPinv=A,v0=v0)
     return w,A.nevals()
 
+def lobpcg_exact(m,k,tol=1e-5):
+    seed=243
+    rng = np.random.default_rng(seed)
+    Ae = util.make_symmetric(m)
+    A = util.CounterOperator(Ae)
+    luA=spla.splu(Ae)
+    X = rng.uniform(-1,1,size=(m,k))
+    w,V = spla.lobpcg(A,X,M=lambda y : luA.solve(y), tol=tol,largest=False,maxiter=1000)
+    return w,A.nevals()
+
+
 def lobpcg(m,k,tol=1e-5):
     seed=243
     rng = np.random.default_rng(seed)
@@ -65,8 +76,26 @@ def lobpcg(m,k,tol=1e-5):
     w,V = spla.lobpcg(A,X,tol=tol,largest=False,maxiter=200)
     return w,A.nevals()
 
+def lobpcg_krylov(m,k,tol=1e-5):
+    seed=243
+    rng = np.random.default_rng(seed)
+    A = util.CounterOperator(util.make_symmetric(m))
+    X = rng.uniform(-1,1,size=(m,k))
+    w,V = spla.lobpcg(A,X,M = lambda Y : util.block_minres_indiv(A,Y,maxiter=100)[0], tol=tol,largest=False,maxiter=1000)
+    return w,A.nevals()
+
+
+def ipower(m,k,tol=1e-5):
+    seed=243
+    rng = np.random.default_rng(seed)
+    Ae = util.make_symmetric(m)
+    A = util.CounterOperator(Ae)
+
+
+
+
 def report(name,w,nevals):
-    logger.info(f"{name}. nevals = {nevals}. min(abs(eig(A))) = {np.amin(np.abs(w))}")
+    logger.info(f"{name}. nevals = {nevals}. min(abs(eig(A))) = {np.amin(np.abs(w))} max(abs(eig(A))) = {np.amax(np.abs(w))}")
 
 
 
@@ -81,7 +110,8 @@ def main():
         except Exception as e:
             print(f"Example {f.__name__} failed with: {e}")
 
-    run(lobpcg)
+    run(lobpcg_exact)
+    #run(lobpcg_krylov)
     #run(plain_lanczos)
     #run(warmup_lanczos)
     #run(inverse_lanczos)

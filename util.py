@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import logging
 logger = logging.getLogger(__name__)
 
-POSDEF = True
+POSDEF = False
 
 # Just a basic sparse symmetric matrix
 # for all functions to use.
